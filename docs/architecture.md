@@ -48,8 +48,9 @@ RFCOMM socket when its address and channel are already known, and injectable
 Linux clipboard providers. The composition root chooses a provider and passes
 its `ClipboardPort` to the clipboard service. `PairingService` coordinates
 discovery and pairing through a port; Linux uses BlueZ D-Bus and persists
-trusted metadata as JSON. RFCOMM service registration, Android integration,
-and presentation remain platform work; application services do not perform
-those tasks.
+trusted metadata as JSON. Linux also registers an RFCOMM service with BlueZ,
+and `android/test-client` is a native debug client for real-device ping/pong.
+Production Android integration and presentation remain platform work;
+application services do not perform those tasks.
 
 Add modules when their first behavior is implemented; avoid empty abstractions and one-class-per-file layering without a use case.

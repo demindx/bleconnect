@@ -1,0 +1,16 @@
+plugins {
+    id "com.android.application"
+}
+
+android {
+    namespace "org.bleconnect.testclient"
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "org.bleconnect.testclient"
+        minSdk 29
+        targetSdk 34
+        versionCode 1
+        versionName "0.1.0"
+    }
+}

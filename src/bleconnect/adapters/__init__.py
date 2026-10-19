@@ -1,1 +1,0 @@
-"""Platform and infrastructure adapters."""

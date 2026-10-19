@@ -4,58 +4,57 @@ import json
 import pytest
 
 from bleconnect.protocol import (
-    MAX_FRAME_SIZE,
-    PROTOCOL_VERSION,
+    MAX_PAYLOAD_SIZE,
+    Packet,
     ProtocolError,
+    decode_packet,
     encode_packet,
-    packet,
     read_packet,
 )
 
 
-def _read(data: bytes) -> dict[str, object]:
-    loop = asyncio.new_event_loop()
-    try:
-        reader = asyncio.StreamReader(loop=loop)
-        reader.feed_data(data)
+def test_round_trip_with_payload() -> None:
+    packet = Packet("file_chunk", {"transfer_id": "abc", "offset": 0}, b"data")
+    assert decode_packet(encode_packet(packet)) == packet
+
+
+def test_round_trip_with_id() -> None:
+    packet = Packet("ping", {"ts": 1}, id="request-1")
+    assert decode_packet(encode_packet(packet)) == packet
+
+
+def test_read_packet_from_stream() -> None:
+    async def scenario() -> None:
+        reader = asyncio.StreamReader()
+        reader.feed_data(encode_packet(Packet("ping", {})))
         reader.feed_eof()
-        return loop.run_until_complete(read_packet(reader))
-    finally:
-        loop.close()
+        assert await read_packet(reader) == Packet("ping", {})
+
+    asyncio.run(scenario())
 
 
-def test_packet_round_trips_unicode_body() -> None:
-    original = packet("clipboard", {"text": "Привет 🌍"})
-    assert _read(encode_packet(original)) == original
+def test_rejects_oversized_payload() -> None:
+    with pytest.raises(ProtocolError):
+        encode_packet(Packet("file_chunk", {}, b"x" * (MAX_PAYLOAD_SIZE + 1)))
 
 
-@pytest.mark.parametrize("size", [0, MAX_FRAME_SIZE + 1])
-def test_read_rejects_invalid_frame_size(size: int) -> None:
-    with pytest.raises(ProtocolError, match="invalid frame size"):
-        _read(size.to_bytes(4, "big"))
+def test_rejects_unsupported_version() -> None:
+    header = json.dumps({"version": 99, "type": "ping", "body": {}}).encode()
+    frame = len(header).to_bytes(4, "big") + header + (0).to_bytes(4, "big")
+    with pytest.raises(ProtocolError):
+        decode_packet(frame)
 
 
-@pytest.mark.parametrize(
-    ("data", "message"),
-    [
-        (b"not json", "valid UTF-8 JSON"),
-        (json.dumps({"version": 999, "type": "ping"}).encode(), "unsupported protocol version"),
-        (json.dumps({"version": True, "type": "ping"}).encode(), "unsupported protocol version"),
-        (json.dumps({"version": PROTOCOL_VERSION, "type": 1}).encode(), "packet type"),
-        (json.dumps({"version": PROTOCOL_VERSION, "type": "ping", "body": []}).encode(), "packet body"),
-        (json.dumps(["not", "an object"]).encode(), "JSON object"),
-    ],
-)
-def test_read_rejects_invalid_packet(data: bytes, message: str) -> None:
-    with pytest.raises(ProtocolError, match=message):
-        _read(len(data).to_bytes(4, "big") + data)
+def test_rejects_trailing_bytes() -> None:
+    with pytest.raises(ProtocolError):
+        decode_packet(encode_packet(Packet("ping", {})) + b"x")
 
 
-def test_encode_rejects_non_json_packet() -> None:
-    with pytest.raises(ProtocolError, match="not JSON serializable"):
-        encode_packet({"value": object()})
+def test_rejects_empty_type() -> None:
+    with pytest.raises(ProtocolError):
+        Packet("")
 
 
-def test_encode_rejects_packet_over_limit() -> None:
-    with pytest.raises(ProtocolError, match="outside the allowed range"):
-        encode_packet({"value": "x" * MAX_FRAME_SIZE})
+def test_rejects_short_frame() -> None:
+    with pytest.raises(ProtocolError):
+        decode_packet(b"\x00")

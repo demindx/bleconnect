@@ -187,16 +187,24 @@ tool state.
 
 Workflow:
 
+- `main` is merge-only. Never commit or push directly to `main`; open a pull
+  request instead. If work was started on `main` by mistake, move the commits
+  to a branch before continuing.
+- Create one branch per issue:
+  `issue-<number>-<short-slug>` (for example, `issue-1-m0-spike`). Use
+  `chore/<slug>` or `docs/<slug>` for work without an issue.
 - Track non-trivial work with a GitHub issue when a remote is available:
   `gh issue create --title "..." --body "..."`. Reference the issue in commit
-  messages when practical.
-- Push after the commit (`git push`) when a remote is configured. If the remote
-  or `gh` authentication is unavailable, report that instead of silently
-  leaving work local.
-- Pull requests should explain the purpose and implementation, list checks run,
-  link related issues, and include screenshots or sample output for UI changes.
-- Never force-push, rewrite published history, or amend a pushed commit unless
-  the user explicitly asks.
+  messages and in the pull request.
+- Push the branch (`git push -u origin <branch>`) and open a pull request with
+  `gh pr create --base main --head <branch>`. Pull requests should explain the
+  purpose and implementation, list checks run, link related issues, and include
+  screenshots or sample output for UI changes.
+- Merge through the pull request after checks pass. Do not force-push `main`,
+  rewrite published history, or amend a pushed commit unless the user
+  explicitly asks.
+- If the remote or `gh` authentication is unavailable, report that instead of
+  silently leaving work local.
 
 ## Configuration & Secrets
 

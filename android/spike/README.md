@@ -95,9 +95,31 @@ The in-app **Refresh log** button shows the same file.
 - [ ] Service stops cleanly from the UI.
 - [ ] `adb logcat` shows no Python crash.
 
+## Validated setup
+
+The spike has been built and exercised with:
+
+- Samsung SM-S721B, Android 16 (API 36), arm64-v8a.
+- Linux host with BlueZ 5.87 and `bleak` 3.0.2.
+- BLE GATT read, ping/pong indication, and clipboard write all succeeded.
+- The foreground service kept logging heartbeats with the screen off. The full
+  30-minute soak is still pending.
+
 ## Notes and limitations
 
 - GATT permissions are unencrypted here; do not ship this configuration.
+- If the phone was previously paired/bonded with the Linux host over Bluetooth
+  Classic, BlueZ may merge or hide the BLE advertisement, or the GATT connection
+  may be dropped during service discovery. Remove the classic bond on the host
+  before testing:
+
+  ```sh
+  bluetoothctl remove <phone-classic-address>
+  ```
+
+  The spike's GATT service is unencrypted, so a bond is not required.
+- Make sure Bluetooth is enabled on the phone. For scripted runs:
+  `adb shell svc bluetooth enable`.
 - The service has no graceful shutdown path in the spike; stopping it kills the
   process and the GATT server.
 - Clipboard writes from a foreground service are allowed on Android 10+; reading

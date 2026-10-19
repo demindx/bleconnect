@@ -18,7 +18,7 @@ from jnius import PythonJavaClass, autoclass, java_method
 PythonService = autoclass("org.kivy.android.PythonService")
 Context = autoclass("android.content.Context")
 BuildVersion = autoclass("android.os.Build$VERSION")
-Notification = autoclass("android.app.Notification")
+NotificationBuilder = autoclass("android.app.Notification$Builder")
 NotificationChannel = autoclass("android.app.NotificationChannel")
 NotificationManager = autoclass("android.app.NotificationManager")
 ClipData = autoclass("android.content.ClipData")
@@ -54,9 +54,9 @@ def start_foreground() -> None:
             CHANNEL_ID, "BLEConnect spike", NotificationManager.IMPORTANCE_LOW
         )
         manager.createNotificationChannel(channel)
-        builder = Notification.Builder(SERVICE, CHANNEL_ID)
+        builder = NotificationBuilder(SERVICE, CHANNEL_ID)
     else:
-        builder = Notification.Builder(SERVICE)
+        builder = NotificationBuilder(SERVICE)
 
     builder.setContentTitle("BLEConnect spike")
     builder.setContentText("BLE GATT server is running")

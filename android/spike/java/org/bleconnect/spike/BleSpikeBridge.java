@@ -116,7 +116,6 @@ public final class BleSpikeBridge {
                 .build();
         AdvertiseData data = new AdvertiseData.Builder()
                 .addServiceUuid(new ParcelUuid(SERVICE_UUID))
-                .setIncludeDeviceName(true)
                 .build();
         advertiseCallback = new AdvertiseCallback() {
             @Override

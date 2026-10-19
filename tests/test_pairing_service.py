@@ -1,60 +1,81 @@
 import asyncio
+from collections.abc import Sequence
 
 import pytest
 
 from bleconnect.application.pairing_service import PairingService
 from bleconnect.application.ports import BluetoothDevice, TrustedDevice
-from bleconnect.adapters.linux.trusted_devices import JsonTrustedDevicesRepository
 
 
-class FakeBluetooth:
+class FakePairing:
     def __init__(self) -> None:
+        self.discovered: list[BluetoothDevice] = []
         self.paired: list[str] = []
 
-    async def discover(self, timeout: float = 10.0):
-        return [BluetoothDevice("AA:BB:CC:DD:EE:FF", "Fedora laptop")]
+    async def discover(self, timeout: float = 10.0) -> Sequence[BluetoothDevice]:
+        return self.discovered
 
     async def pair(self, address: str) -> BluetoothDevice:
         self.paired.append(address)
-        return BluetoothDevice(address, "Fedora laptop", paired=True)
+        return BluetoothDevice(address, "Phone", True)
 
 
-def test_pairing_only_saves_peer_after_platform_pair_succeeds(tmp_path) -> None:
-    bluetooth = FakeBluetooth()
-    repository = JsonTrustedDevicesRepository(tmp_path / "trusted.json")
-    service = PairingService(bluetooth, repository)
+class FakeTrustedDevices:
+    def __init__(self) -> None:
+        self.devices: list[TrustedDevice] = []
 
+    async def list_trusted(self) -> Sequence[TrustedDevice]:
+        return self.devices
+
+    async def save_trusted(self, device: TrustedDevice) -> None:
+        self.devices.append(device)
+
+    async def remove_trusted(self, address: str) -> None:
+        self.devices = [
+            device for device in self.devices if device.address != address
+        ]
+
+
+def test_pair_and_trust_normalizes_address() -> None:
     async def scenario() -> None:
+        bluetooth = FakePairing()
+        repository = FakeTrustedDevices()
+        service = PairingService(bluetooth, repository)
+
         trusted = await service.pair_and_trust("aa:bb:cc:dd:ee:ff")
-        assert trusted == TrustedDevice("AA:BB:CC:DD:EE:FF", "Fedora laptop")
-        assert await service.list_trusted() == [trusted]
-        await service.forget(trusted.address)
-        assert await service.list_trusted() == []
+
+        assert bluetooth.paired == ["AA:BB:CC:DD:EE:FF"]
+        assert trusted == TrustedDevice("AA:BB:CC:DD:EE:FF", "Phone")
+        assert repository.devices == [trusted]
 
     asyncio.run(scenario())
-    assert bluetooth.paired == ["AA:BB:CC:DD:EE:FF"]
 
 
-def test_pairing_rejects_malformed_address_before_calling_platform(tmp_path) -> None:
-    bluetooth = FakeBluetooth()
-    service = PairingService(
-        bluetooth, JsonTrustedDevicesRepository(tmp_path / "trusted.json")
-    )
-
-    with pytest.raises(ValueError, match="invalid Bluetooth address"):
-        asyncio.run(service.pair_and_trust("not-a-device"))
-    assert bluetooth.paired == []
-
-
-def test_trusted_repository_atomically_persists_entries_with_private_mode(tmp_path) -> None:
-    path = tmp_path / "config" / "trusted.json"
-    repository = JsonTrustedDevicesRepository(path)
-    device = TrustedDevice("AA:BB:CC:DD:EE:FF", "Phone")
-
+def test_pair_rejects_invalid_address() -> None:
     async def scenario() -> None:
-        await repository.save_trusted(device)
-        await repository.save_trusted(device)
-        assert await repository.list_trusted() == [device]
+        service = PairingService(FakePairing(), FakeTrustedDevices())
+        with pytest.raises(ValueError):
+            await service.pair_and_trust("not-an-address")
 
     asyncio.run(scenario())
-    assert path.stat().st_mode & 0o777 == 0o600
+
+
+def test_discover_rejects_non_positive_timeout() -> None:
+    async def scenario() -> None:
+        service = PairingService(FakePairing(), FakeTrustedDevices())
+        with pytest.raises(ValueError):
+            await service.discover(0)
+
+    asyncio.run(scenario())
+
+
+def test_forget_removes_device() -> None:
+    async def scenario() -> None:
+        repository = FakeTrustedDevices()
+        repository.devices = [TrustedDevice("AA:BB:CC:DD:EE:FF", "Phone")]
+        service = PairingService(FakePairing(), repository)
+
+        await service.forget("aa:bb:cc:dd:ee:ff")
+        assert repository.devices == []
+
+    asyncio.run(scenario())

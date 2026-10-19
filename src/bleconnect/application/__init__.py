@@ -1,1 +1,1 @@
-"""Application-level interfaces and use cases."""
+"""Application package."""

@@ -1,4 +1,4 @@
-"""Interfaces shared by application services and transport adapters."""
+"""Interfaces shared by application services and platform adapters."""
 
 from __future__ import annotations
 
@@ -6,27 +6,25 @@ from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
+from ..protocol import Packet
 
-class DeviceLink(Protocol):
-    """Bidirectional packet link to one paired device.
 
-    Implementations own connection setup and teardown. Application services
-    exchange versioned protocol packets without depending on Bluetooth APIs.
-    """
+class PacketLink(Protocol):
+    """Bidirectional packet link owned by a transport adapter."""
 
-    async def send(self, packet: dict[str, object]) -> None:
-        """Send one protocol packet to the connected device."""
+    async def send(self, packet: Packet) -> None:
+        """Send one packet to the peer."""
 
-    async def receive(self) -> dict[str, object]:
-        """Receive the next protocol packet from the connected device."""
+    async def receive(self) -> Packet:
+        """Receive the next packet from the peer."""
 
     async def close(self) -> None:
-        """Close the link and release its transport resources."""
+        """Close the link and release transport resources."""
 
 
 @dataclass(frozen=True)
 class ClipboardSnapshot:
-    """Text read from a clipboard, with an optional platform sensitivity flag."""
+    """Text read from a clipboard with an optional sensitivity flag."""
 
     text: str
     sensitive: bool = False
@@ -37,7 +35,68 @@ class ClipboardPort(Protocol):
         """Read current clipboard text, or return None when unavailable."""
 
     async def write_text(self, text: str) -> None:
-        """Replace clipboard contents with text received from a peer."""
+        """Replace clipboard contents with text from a peer."""
+
+
+class ClipboardWatcher(Protocol):
+    def changes(self) -> AsyncIterator[ClipboardSnapshot]:
+        """Yield clipboard snapshots as they change."""
+
+
+@dataclass(frozen=True)
+class PeerInfo:
+    """A peer discovered over BLE."""
+
+    address: str
+    name: str
+
+
+class PresencePort(Protocol):
+    async def start(self) -> None:
+        """Start advertising or scanning for the peer."""
+
+    async def stop(self) -> None:
+        """Stop presence work and release resources."""
+
+    async def wait_for_peer(self, timeout: float) -> PeerInfo | None:
+        """Wait for a trusted peer to become available."""
+
+
+class FileSource(Protocol):
+    @property
+    def name(self) -> str:
+        """File name shown to the peer."""
+
+    @property
+    def size(self) -> int:
+        """File size in bytes."""
+
+    def read_chunks(self, chunk_size: int) -> AsyncIterator[bytes]:
+        """Yield the file contents in bounded chunks."""
+
+
+class FileSink(Protocol):
+    async def write(self, data: bytes) -> None:
+        """Append bytes to the destination."""
+
+    async def finish(self, sha256: str) -> None:
+        """Publish the received file after verification."""
+
+    async def abort(self) -> None:
+        """Remove the partial destination."""
+
+
+class FileSinkFactory(Protocol):
+    async def create(self, name: str, size: int) -> FileSink:
+        """Create a sink for an incoming file."""
+
+
+class SoundPlayer(Protocol):
+    async def play_find_phone(self, duration_s: float, volume: float) -> None:
+        """Play the find-phone sound."""
+
+    async def stop(self) -> None:
+        """Stop the find-phone sound."""
 
 
 @dataclass(frozen=True)
@@ -74,21 +133,3 @@ class TrustedDevicesRepository(Protocol):
 
     async def remove_trusted(self, address: str) -> None:
         """Forget a trusted device."""
-
-
-@dataclass(frozen=True)
-class SharedFile:
-    """A file entry exposed by a peer, with a root-relative POSIX path."""
-
-    path: str
-    size: int
-    modified_ns: int
-    is_directory: bool = False
-
-
-class SharedFilesPort(Protocol):
-    async def list_files(self, relative_path: str = "") -> Sequence[SharedFile]:
-        """List files beneath the explicitly shared root."""
-
-    async def read_file(self, relative_path: str) -> AsyncIterator[bytes]:
-        """Stream a shared file in bounded chunks."""

@@ -1,64 +1,76 @@
 # BLEConnect
 
-An Android and Linux app for sharing text and browsing a user-approved folder over Bluetooth.
+An Android and Linux app for seamless clipboard sharing, explicit file transfer,
+and finding your phone over Bluetooth.
 
 ## Direction
 
-The app logic and user interface will be Python. The Android build will use Kivy and Python for Android; Bluetooth access on Android may need a small bridge to Android's Bluetooth APIs. The Linux companion will use Python with BlueZ. The first transport target is Bluetooth Classic RFCOMM because it provides a bidirectional byte stream suitable for clipboard messages and file transfers.
+The application logic and both interfaces are Python. Linux uses PySide6/Qt;
+Android uses Kivy with a thin native bridge. Bluetooth has two roles:
 
-The repository now contains shared packet framing, application-level ports and clipboard/file/pairing services, a read-only Linux rooted-files adapter, BlueZ discovery/pairing and trusted-device persistence, Linux clipboard providers, a BlueZ RFCOMM server, and a minimal Android RFCOMM test client. The full Kivy UI, production reconnect behavior, and clipboard IME are not implemented yet. Recent Android versions restrict background clipboard reads, so background synchronization needs an Android-specific clipboard strategy.
+- **BLE GATT** carries presence, control messages, find-phone, and clipboard
+  text. Android is the peripheral/advertiser; Linux is the central/GATT client.
+- **Bluetooth Classic RFCOMM** carries on-demand file transfers.
 
-Clipboard access is injected through `ClipboardPort`; the sync service does not select or import a desktop utility. The Linux composition root chooses an ordered provider list at startup, so another backend can be added or injected without changing application services:
+`docs/spec.md` is the canonical product, protocol, UI, and platform
+specification. `docs/architecture.md` records the dependency boundaries.
 
-```python
-clipboard = resolve_linux_clipboard(
-    [WaylandClipboardProvider(), XclipClipboardProvider()]
-)
-service = ClipboardSyncService(clipboard, device_link)
-```
+## Current state
 
-On Fedora Wayland, `WaylandClipboardProvider` uses `wl-copy` and `wl-paste`; install Fedora's `wl-clipboard` package and start BLEConnect from the graphical session so it inherits `WAYLAND_DISPLAY`. `XclipClipboardProvider` supports X11 and acts as a fallback when both display variables are present. Providers can be replaced or reordered at startup. The command adapter skips clipboard offers marked with KDE's `x-kde-passwordManagerHint` MIME type and accepts an application supplied sensitivity detector. Wayland has no universal sensitivity marker, so unmarked secret text cannot be identified automatically. Clipboard commands require access to the active desktop session. [Fedora wl-clipboard package](https://packages.fedoraproject.org/pkgs/wl-clipboard/wl-clipboard/) · [Wayland clipboard limitations](https://manpages.ubuntu.com/manpages/questing/man1/wl-paste.1.html) · [KDE password manager marker](https://github.com/bugaevc/wl-clipboard/issues/177)
+The repository has been rebuilt from scratch as an application skeleton:
+
+- RFCOMM v2 framing (`protocol.py`) and BLE chunk framing/reassembly
+  (`ble_protocol.py`).
+- Shared message names (`messages.py`).
+- Ports and use cases for clipboard, file transfer, pairing, and session
+  dispatch (`application/`).
+- `AppController` and UI-agnostic view models shared by Qt and Kivy
+  (`presentation/`).
+- Linux and Android composition roots (`platform/`).
+- Unit and integration tests using in-memory fakes (`tests/`).
+
+Not implemented yet:
+
+- BLE and RFCOMM platform adapters (BlueZ, `bleak`, Android bridge).
+- Qt and Kivy interfaces.
+- Android foreground service and clipboard IME.
+- Reconnect/backoff and real-device flows.
 
 ## Repository layout
 
-- `src/bleconnect/protocol.py` — shared, versioned message framing and validation.
-- `src/bleconnect/application/` — transport, clipboard, and shared-file ports and use cases.
-- `src/bleconnect/adapters/filesystem/rooted_files.py` — read-only access within an explicitly selected Linux directory.
-- `src/bleconnect/adapters/linux/bluetooth_rfcomm.py` — RFCOMM packet link for an already paired peer and known channel.
-- `src/bleconnect/adapters/linux/bluez_pairing.py` — BlueZ discovery and pairing through system D-Bus.
-- `src/bleconnect/adapters/linux/bluez_rfcomm_server.py` — register an RFCOMM service with BlueZ and accept links.
-- `src/bleconnect/adapters/linux/trusted_devices.py` — atomic JSON persistence for trusted device metadata.
-- `src/bleconnect/adapters/linux/clipboard.py` — injectable clipboard port, command adapter, and Wayland/X11 providers.
-- `android/test-client/` — debug app that connects to a paired Linux peer by UUID and sends a protocol ping.
-- `tests/` — protocol framing, application behavior, filesystem boundaries, and link tests.
-- `android/` — Kivy Android UI and packaging (to be added).
-- `docs/architecture.md` — architecture boundaries and dependency direction.
+- `src/bleconnect/protocol.py` — shared RFCOMM v2 framing and validation.
+- `src/bleconnect/ble_protocol.py` — BLE frame format, chunking, reassembly.
+- `src/bleconnect/messages.py` — shared message type names and packet helpers.
+- `src/bleconnect/application/` — ports, clipboard, file transfer, pairing,
+  and session dispatch.
+- `src/bleconnect/presentation/` — `AppController` and shared view models.
+- `src/bleconnect/platform/` — Linux and Android composition roots.
+- `src/bleconnect/adapters/` — platform adapters (planned).
+- `android/` — Kivy packaging and native bridge (planned).
+- `tests/` — unit and integration tests with in-memory fakes.
+- `docs/spec.md` — canonical specification.
+- `docs/architecture.md` — architectural boundaries and dependency direction.
 
 ## Development
 
-Use Python 3.11 or newer for Linux development. Create the environment with `uv sync` and run project commands with `uv run`.
-
-For the Linux BlueZ pairing adapter, install the optional D-Bus dependency with `uv sync --extra linux`. Pairing confirmation is handled by the active desktop BlueZ agent.
-
-### Real-device RFCOMM smoke test
-
-Build the test APK with Android SDK platform 34 and Java 17 or newer:
+Use Python 3.11 or newer. Create the environment with `uv sync` and run project
+commands with `uv run`.
 
 ```sh
-cd android/test-client
-ANDROID_HOME=/path/to/android-sdk ./gradlew assembleDebug
+uv sync --extra dev
+uv run pytest
+uv run bleconnect --version
 ```
 
-Pair the phone and Fedora computer in Android Bluetooth settings, then run the Linux server from the graphical session:
+Optional extras:
 
-```sh
-cd /path/to/bleconnect
-uv sync --extra linux
-uv run bleconnect rfcomm-server
-```
+- `uv sync --extra linux` — `dbus-next` and `bleak` for the future Linux
+  adapters.
+- `uv sync --extra gui` — PySide6 and qasync for the future Qt interface.
+- `uv sync --extra android` — Kivy and pyjnius for the future Android package.
 
-Install `app/build/outputs/apk/debug/app-debug.apk` with ADB, open **BLEConnect RFCOMM Test**, refresh paired devices, select Fedora, and tap **Connect and send ping**. A successful test displays the Linux `pong` response. Keep the Linux server running during the test. This checks the Bluetooth RFCOMM service and packet framing; it does not yet test app-driven pairing or reconnect.
-
-The Android test app is a small native debug harness; production APK packaging will use Kivy and python-for-android with the planned Kotlin Bluetooth bridge.
-
-Run the unit tests with `uv sync --extra dev` followed by `uv run pytest`.
+The next milestone is the Android background spike described in
+`docs/spec.md`: prove that a foreground Python service can host a GATT server
+and write the clipboard with the screen off. The spike project and its
+build/run instructions live in `android/spike/`; the Linux test client is
+`tools/ble_spike_client.py`. Platform adapters and GUIs follow after that.

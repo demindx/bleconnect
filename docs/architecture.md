@@ -18,6 +18,20 @@ Linux UI/CLI ──────┘                            ▲
 - **Platform adapters** — implement ports using BlueZ/RFCOMM on Linux, Android Bluetooth APIs, OS clipboard APIs, and filesystem access.
 - **Protocol** — packet types, framing, version negotiation, and payload rules shared by both peers.
 
+## Transport split
+
+The canonical transport and protocol details live in `docs/spec.md`. Bluetooth
+has two distinct roles:
+
+- **BLE GATT** — presence, control messages, find-phone, and clipboard text.
+  Android is the peripheral/advertiser; Linux is the central/GATT client.
+- **RFCOMM** — on-demand file transfer only. Linux is the server; Android
+  connects when a transfer starts.
+
+Clipboard and file transfer use separate ports even though both ultimately cross
+Bluetooth. This keeps platform permissions, reconnection rules, and test fakes
+independent.
+
 ## Dependency rules
 
 Application services may call ports and protocol code. Platform adapters implement ports and may depend on OS libraries. UI calls application services. Keep dependencies pointing inward: application logic must not import Kivy, BlueZ, Android classes, or desktop clipboard tools.
@@ -29,28 +43,39 @@ Use a rooted filesystem adapter for directory browsing. It must reject paths tha
 ```text
 src/bleconnect/
   protocol.py
+  ble_protocol.py
   application/
     pairing_service.py
     clipboard_service.py
-    file_browser_service.py
+    file_transfer_service.py
+    file_browser_service.py   # future shared-folder feature
+    session.py
     ports.py
+  presentation/
+    app_controller.py
+    view_models.py
   adapters/
+    linux/ble_central.py
+    linux/bluez_rfcomm_server.py
     linux/bluetooth_rfcomm.py
     linux/clipboard.py
     android/bluetooth.py
     android/clipboard.py
-    filesystem/rooted_files.py
+    filesystem/rooted_files.py   # future shared-folder feature
+  platform/
+    linux.py
+    android.py
 ```
 
-Implemented today: clipboard and file-browser use cases and their ports,
-`RootedFiles` for read-only Linux access, `RfcommDeviceLink` for a paired
-RFCOMM socket when its address and channel are already known, and injectable
-Linux clipboard providers. The composition root chooses a provider and passes
-its `ClipboardPort` to the clipboard service. `PairingService` coordinates
-discovery and pairing through a port; Linux uses BlueZ D-Bus and persists
-trusted metadata as JSON. Linux also registers an RFCOMM service with BlueZ,
-and `android/test-client` is a native debug client for real-device ping/pong.
-Production Android integration and presentation remain platform work;
-application services do not perform those tasks.
+Implemented today: shared RFCOMM v2 framing, BLE frame chunking and
+reassembly, message helpers, application ports, clipboard, file-transfer, and
+pairing services, a packet dispatcher and session loop, `AppController`, shared
+view models, and Linux/Android composition roots. The core is covered by
+hardware-free tests using in-memory links and fakes.
+
+Not implemented yet: platform adapters (BlueZ, `bleak`, Android bridge,
+clipboard, storage, sound), Qt/Kivy views, the Android foreground service,
+reconnect/backoff, and the clipboard IME. These must implement the ports in
+`application/ports.py`; application services do not perform platform work.
 
 Add modules when their first behavior is implemented; avoid empty abstractions and one-class-per-file layering without a use case.

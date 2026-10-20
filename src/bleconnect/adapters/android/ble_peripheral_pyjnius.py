@@ -5,20 +5,24 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 
-from jnius import PythonJavaClass, autoclass, java_method, jarray
+from jnius import PythonJavaClass, autoclass, java_method
 
 logger = logging.getLogger("bleconnect.android.ble")
 
 Bridge = autoclass("org.bleconnect.app.BlePeripheralBridge")
 
 
-def _to_java_bytes(data: bytes):
-    return jarray("b", [value if value < 128 else value - 256 for value in data])
+def _to_java_bytes(data: bytes) -> bytes:
+    """pyjnius converts Python bytes directly to Java byte[]."""
+    return bytes(data)
 
 
 def _to_python_bytes(value) -> bytes:
     if isinstance(value, (bytes, bytearray)):
         return bytes(value)
+    tostring = getattr(value, "tostring", None)
+    if callable(tostring):
+        return tostring()
     return bytes(int(item) & 0xFF for item in value)
 
 

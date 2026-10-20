@@ -17,8 +17,6 @@ specification. `docs/architecture.md` records the dependency boundaries.
 
 ## Current state
 
-The repository has been rebuilt from scratch as an application skeleton:
-
 - RFCOMM v2 framing (`protocol.py`) and BLE chunk framing/reassembly
   (`ble_protocol.py`).
 - Shared message names (`messages.py`).
@@ -26,15 +24,22 @@ The repository has been rebuilt from scratch as an application skeleton:
   dispatch (`application/`).
 - `AppController` and UI-agnostic view models shared by Qt and Kivy
   (`presentation/`).
-- Linux and Android composition roots (`platform/`).
-- Unit and integration tests using in-memory fakes (`tests/`).
+- Linux adapters:
+  - BlueZ discovery/pairing and trusted-device persistence.
+  - BLE central over `bleak` with chunking and reassembly.
+  - RFCOMM profile server and packet link.
+  - Wayland/X11 clipboard providers and a change watcher.
+  - Local file source and atomic `Downloads/bleconnect` sink.
+- Linux/Android composition helpers and a small CLI.
+- Unit and integration tests with in-memory fakes.
 
 Not implemented yet:
 
-- BLE and RFCOMM platform adapters (BlueZ, `bleak`, Android bridge).
-- Qt and Kivy interfaces.
-- Android foreground service and clipboard IME.
-- Reconnect/backoff and real-device flows.
+- Production Android foreground service and Kivy UI.
+- Qt interface.
+- Clipboard IME for background Android-to-Linux sync.
+- Automatic reconnect/backoff and the full GUI orchestration.
+- PC-to-phone file sending orchestration (the RFCOMM receive path is ready).
 
 ## Repository layout
 
@@ -44,9 +49,11 @@ Not implemented yet:
 - `src/bleconnect/application/` — ports, clipboard, file transfer, pairing,
   and session dispatch.
 - `src/bleconnect/presentation/` — `AppController` and shared view models.
+- `src/bleconnect/adapters/linux/` — BlueZ pairing, BLE central, RFCOMM,
+  clipboard, trusted devices.
+- `src/bleconnect/adapters/filesystem/` — local file source and sink.
 - `src/bleconnect/platform/` — Linux and Android composition roots.
-- `src/bleconnect/adapters/` — platform adapters (planned).
-- `android/` — Kivy packaging and native bridge (planned).
+- `android/spike/` — M0 foreground-service/BLE spike.
 - `tests/` — unit and integration tests with in-memory fakes.
 - `docs/spec.md` — canonical specification.
 - `docs/architecture.md` — architectural boundaries and dependency direction.
@@ -57,20 +64,43 @@ Use Python 3.11 or newer. Create the environment with `uv sync` and run project
 commands with `uv run`.
 
 ```sh
-uv sync --extra dev
+uv sync --extra dev --extra linux
 uv run pytest
 uv run bleconnect --version
 ```
 
-Optional extras:
+Extras:
 
-- `uv sync --extra linux` — `dbus-next` and `bleak` for the future Linux
-  adapters.
-- `uv sync --extra gui` — PySide6 and qasync for the future Qt interface.
-- `uv sync --extra android` — Kivy and pyjnius for the future Android package.
+- `linux` — `dbus-next` and `bleak` for BlueZ, BLE, and RFCOMM.
+- `gui` — PySide6 and qasync for the future Qt interface.
+- `android` — Kivy and pyjnius for the Android package.
 
-The next milestone is the Android background spike described in
-`docs/spec.md`: prove that a foreground Python service can host a GATT server
-and write the clipboard with the screen off. The spike project and its
-build/run instructions live in `android/spike/`; the Linux test client is
-`tools/ble_spike_client.py`. Platform adapters and GUIs follow after that.
+Clipboard commands use `wl-copy`/`wl-paste` on Wayland or `xclip` on X11; install
+the matching desktop package.
+
+## Linux adapter commands
+
+These commands exercise the Linux adapters without a GUI. Run them from the
+graphical session so clipboard and BlueZ agents are available.
+
+```sh
+# Find the Android BLE peripheral
+uv run bleconnect ble-scan
+
+# Send one control ping and wait for pong (production framed BLE service)
+uv run bleconnect ble-ping --address AA:BB:CC:DD:EE:FF
+
+# Discover and pair through the desktop BlueZ agent
+uv run bleconnect discover
+uv run bleconnect pair --address AA:BB:CC:DD:EE:FF
+uv run bleconnect forget --address AA:BB:CC:DD:EE:FF
+
+# Accept RFCOMM file transfers and save them under ~/Downloads/bleconnect
+uv run bleconnect rfcomm-server
+```
+
+`rfcomm-server` accepts only trusted devices. The current M0 spike uses raw BLE
+writes, so `ble-ping` targets the production framed BLE service, not the spike.
+
+The next milestone is the production Android service and Kivy UI (issue #3),
+including the full 30-minute screen-off soak.

@@ -219,12 +219,10 @@ src/bleconnect/
   adapters/
     linux/
       bluez_pairing.py
-      bluez_rfcomm_server.py
-      bluetooth_rfcomm.py
       ble_central.py           # bleak-based GATT client/scanner
+      rfcomm.py                # RFCOMM link and BlueZ profile server
       clipboard.py
       trusted_devices.py
-      settings.py
     android/                   # thin native bridge wrappers (post-spike)
     filesystem/
       rooted_files.py          # future feature

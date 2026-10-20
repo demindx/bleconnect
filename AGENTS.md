@@ -22,13 +22,16 @@ stays independent of both GUIs and of platform APIs.
   facade shared by Qt and Kivy.
 - `src/bleconnect/adapters/linux/` - BlueZ pairing, BLE central, RFCOMM,
   clipboard, trusted devices.
+- `src/bleconnect/adapters/android/` - BLE peripheral bridge, clipboard, sound,
+  and the localhost UI/service control server.
 - `src/bleconnect/adapters/filesystem/` - local file source/sink for explicit
   transfers and a future rooted-file adapter for shared folders.
 - `src/bleconnect/adapters/ui/qt/` - thin PySide6 views (planned).
 - `src/bleconnect/adapters/ui/kivy/` - thin Kivy screens (planned).
 - `src/bleconnect/platform/` - per-platform composition roots.
-- `android/` - Android packaging, permissions, and the native Bluetooth bridge
-  (planned).
+- `android/app/` - production Android service and Kivy UI (in progress).
+- `android/spike/` - M0 foreground-service/BLE spike.
+- `android/p4a-recipes/` - local python-for-android build workaround.
 - `tests/` - unit and integration tests named `test_<behavior>.py`.
 - `docs/` - specification, architecture, and operational notes.
 

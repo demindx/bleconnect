@@ -60,8 +60,11 @@ src/bleconnect/
     linux/rfcomm.py
     linux/clipboard.py
     linux/trusted_devices.py
-    android/bluetooth.py        # planned
-    android/clipboard.py        # planned
+    android/ble_peripheral.py
+    android/ble_peripheral_pyjnius.py
+    android/clipboard.py
+    android/sound.py
+    android/control.py
     filesystem/file_source.py
     filesystem/file_sink.py
     filesystem/rooted_files.py  # future shared-folder feature
@@ -73,13 +76,15 @@ src/bleconnect/
 Implemented today: shared RFCOMM v2 framing, BLE frame chunking and
 reassembly, message helpers, application ports, clipboard, file-transfer, and
 pairing services, a packet dispatcher and session loop, `AppController`, shared
-view models, Linux/Android composition roots, and the Linux adapters (BlueZ
+view models, Linux/Android composition roots, the Linux adapters (BlueZ
 pairing, BLE central, RFCOMM server, clipboard providers/watcher, trusted
-devices, local file source/sink). The core and adapters are covered by
-hardware-free tests using in-memory links and fakes.
+devices, local file source/sink), and the first Android production slice (BLE
+peripheral, encrypted GATT, clipboard, find-phone, local control server, Kivy
+status UI). The core and adapters are covered by hardware-free tests using
+in-memory links and fakes.
 
-Not implemented yet: the Android bridge/service and Kivy UI, Qt views,
-reconnect/backoff, the clipboard IME, and PC-to-phone file sending
+Not implemented yet: Android RFCOMM file transfer, the full screen-off soak,
+Qt views, reconnect/backoff, the clipboard IME, and PC-to-phone sending
 orchestration. These must implement the ports in
 `application/ports.py`; application services do not perform platform work.
 

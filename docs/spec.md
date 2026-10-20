@@ -223,7 +223,12 @@ src/bleconnect/
       rfcomm.py                # RFCOMM link and BlueZ profile server
       clipboard.py
       trusted_devices.py
-    android/                   # thin native bridge wrappers (post-spike)
+    android/
+      ble_peripheral.py        # PacketLink over the native GATT bridge
+      ble_peripheral_pyjnius.py
+      clipboard.py
+      sound.py
+      control.py               # localhost UI/service JSON control server
     filesystem/
       rooted_files.py          # future feature
       file_source.py

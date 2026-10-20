@@ -21,6 +21,7 @@ android.archs = arm64-v8a
 android.accept_sdk_license = True
 android.add_src = java
 android.logcat_filters = *:S python:D BleSpike:D
+p4a.local_recipes = ../p4a-recipes
 
 [buildozer]
 log_level = 2

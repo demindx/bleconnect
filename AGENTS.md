@@ -20,10 +20,10 @@ stays independent of both GUIs and of platform APIs.
 - `src/bleconnect/application/` - use cases and ports (no platform imports).
 - `src/bleconnect/presentation/` - UI-agnostic view models and the application
   facade shared by Qt and Kivy.
-- `src/bleconnect/adapters/linux/` - BlueZ, BLE central, RFCOMM, clipboard,
-  trusted devices (planned).
-- `src/bleconnect/adapters/filesystem/` - read-only rooted file access (future
-  shared-folder feature).
+- `src/bleconnect/adapters/linux/` - BlueZ pairing, BLE central, RFCOMM,
+  clipboard, trusted devices.
+- `src/bleconnect/adapters/filesystem/` - local file source/sink for explicit
+  transfers and a future rooted-file adapter for shared folders.
 - `src/bleconnect/adapters/ui/qt/` - thin PySide6 views (planned).
 - `src/bleconnect/adapters/ui/kivy/` - thin Kivy screens (planned).
 - `src/bleconnect/platform/` - per-platform composition roots.

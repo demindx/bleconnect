@@ -55,13 +55,16 @@ src/bleconnect/
     app_controller.py
     view_models.py
   adapters/
+    linux/bluez_pairing.py
     linux/ble_central.py
-    linux/bluez_rfcomm_server.py
-    linux/bluetooth_rfcomm.py
+    linux/rfcomm.py
     linux/clipboard.py
-    android/bluetooth.py
-    android/clipboard.py
-    filesystem/rooted_files.py   # future shared-folder feature
+    linux/trusted_devices.py
+    android/bluetooth.py        # planned
+    android/clipboard.py        # planned
+    filesystem/file_source.py
+    filesystem/file_sink.py
+    filesystem/rooted_files.py  # future shared-folder feature
   platform/
     linux.py
     android.py
@@ -70,12 +73,14 @@ src/bleconnect/
 Implemented today: shared RFCOMM v2 framing, BLE frame chunking and
 reassembly, message helpers, application ports, clipboard, file-transfer, and
 pairing services, a packet dispatcher and session loop, `AppController`, shared
-view models, and Linux/Android composition roots. The core is covered by
+view models, Linux/Android composition roots, and the Linux adapters (BlueZ
+pairing, BLE central, RFCOMM server, clipboard providers/watcher, trusted
+devices, local file source/sink). The core and adapters are covered by
 hardware-free tests using in-memory links and fakes.
 
-Not implemented yet: platform adapters (BlueZ, `bleak`, Android bridge,
-clipboard, storage, sound), Qt/Kivy views, the Android foreground service,
-reconnect/backoff, and the clipboard IME. These must implement the ports in
+Not implemented yet: the Android bridge/service and Kivy UI, Qt views,
+reconnect/backoff, the clipboard IME, and PC-to-phone file sending
+orchestration. These must implement the ports in
 `application/ports.py`; application services do not perform platform work.
 
 Add modules when their first behavior is implemented; avoid empty abstractions and one-class-per-file layering without a use case.

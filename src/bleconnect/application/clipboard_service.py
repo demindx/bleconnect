@@ -40,12 +40,20 @@ class ClipboardService:
     def resume(self) -> None:
         self._paused = False
 
-    async def publish_current(self) -> bool:
+    async def publish_current(self, *, force: bool = False) -> bool:
         """Read and send the current clipboard when eligible."""
-        return await self.publish_snapshot(await self._clipboard.read_text())
+        return await self.publish_snapshot(
+            await self._clipboard.read_text(), force=force
+        )
 
-    async def publish_snapshot(self, snapshot: ClipboardSnapshot | None) -> bool:
-        """Send one clipboard snapshot when it is new and safe."""
+    async def publish_snapshot(
+        self, snapshot: ClipboardSnapshot | None, *, force: bool = False
+    ) -> bool:
+        """Send one clipboard snapshot when it is new and safe.
+
+        ``force`` is used by the explicit UI button: it bypasses echo
+        suppression so the user can resend the last received text.
+        """
         if self._paused or snapshot is None:
             return False
 
@@ -54,11 +62,12 @@ class ClipboardService:
             return False
         if len(text.encode("utf-8")) > self._max_bytes:
             return False
-        if text == self._last_received:
-            self._last_received = None
-            return False
-        if text == self._last_sent:
-            return False
+        if not force:
+            if text == self._last_received:
+                self._last_received = None
+                return False
+            if text == self._last_sent:
+                return False
 
         await self._link.send(clipboard_packet(text))
         self._last_sent = text

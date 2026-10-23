@@ -177,7 +177,7 @@ async def _run() -> None:
                 raise IpcError("invalid_params", "text is required")
             try:
                 sent = await clipboard_service.publish_snapshot(
-                    ClipboardSnapshot(text)
+                    ClipboardSnapshot(text), force=True
                 )
             except Exception as exc:
                 log(f"clipboard send failed: {exc}")

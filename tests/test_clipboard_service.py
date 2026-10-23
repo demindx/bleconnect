@@ -71,3 +71,24 @@ def test_pause_blocks_sending_and_applying() -> None:
         assert await service.publish_current() is True
 
     asyncio.run(scenario())
+
+
+def test_forced_send_overrides_echo_suppression() -> None:
+    async def scenario() -> None:
+        clipboard = MemoryClipboard("local")
+        link, peer = paired_links()
+        service = ClipboardService(clipboard, link)
+
+        assert await service.handle_packet(
+            Packet("clipboard", {"text": "remote"})
+        )
+        assert await service.publish_current() is False
+        clipboard.snapshot = ClipboardSnapshot("remote")
+        assert await service.publish_snapshot(
+            ClipboardSnapshot("remote"), force=True
+        ) is True
+        assert await asyncio.wait_for(peer.incoming.get(), 1) == Packet(
+            "clipboard", {"text": "remote"}
+        )
+
+    asyncio.run(scenario())

@@ -126,6 +126,7 @@ class BlePeripheralLink:
 
     def _on_connection(self, connected: bool) -> None:
         self._connected = connected
+        self._assembler.reset()
 
     def _on_mtu(self, mtu: int) -> None:
         self._mtu = max(DEFAULT_MTU, mtu)

@@ -158,3 +158,24 @@ def test_unsupported_packet_is_rejected() -> None:
             await link.send(Packet("file_offer", {}))
 
     asyncio.run(scenario())
+
+
+def test_reconnect_resets_message_dedupe_state() -> None:
+    async def scenario() -> None:
+        transport = FakePeripheralTransport(mtu=23)
+        link = BlePeripheralLink(transport)
+        await link.connect()
+        packet = Packet("clipboard", {"text": "abcdefghijklmno"})
+
+        transport.connection_handler(True)
+        for frame in encode_packet_chunks(packet, 5, 23):
+            transport.write_handler("clipboard", encode_frame(frame))
+        assert await asyncio.wait_for(link.receive(), 1) == packet
+
+        transport.connection_handler(False)
+        transport.connection_handler(True)
+        for frame in encode_packet_chunks(packet, 5, 23):
+            transport.write_handler("clipboard", encode_frame(frame))
+        assert await asyncio.wait_for(link.receive(), 1) == packet
+
+    asyncio.run(scenario())

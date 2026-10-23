@@ -44,6 +44,7 @@ Use a rooted filesystem adapter for directory browsing. It must reject paths tha
 src/bleconnect/
   protocol.py
   ble_protocol.py
+  ipc.py
   application/
     pairing_service.py
     clipboard_service.py
@@ -64,7 +65,6 @@ src/bleconnect/
     android/ble_peripheral_pyjnius.py
     android/clipboard.py
     android/sound.py
-    android/control.py
     filesystem/file_source.py
     filesystem/file_sink.py
     filesystem/rooted_files.py  # future shared-folder feature
@@ -79,8 +79,8 @@ pairing services, a packet dispatcher and session loop, `AppController`, shared
 view models, Linux/Android composition roots, the Linux adapters (BlueZ
 pairing, BLE central, RFCOMM server, clipboard providers/watcher, trusted
 devices, local file source/sink), and the first Android production slice (BLE
-peripheral, encrypted GATT, clipboard, find-phone, local control server, Kivy
-status UI). The core and adapters are covered by hardware-free tests using
+peripheral, encrypted GATT, clipboard, find-phone, Unix-socket control server,
+Kivy status UI). The core and adapters are covered by hardware-free tests using
 in-memory links and fakes.
 
 Not implemented yet: Android RFCOMM file transfer, the full screen-off soak,

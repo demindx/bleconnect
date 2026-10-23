@@ -31,7 +31,7 @@ specification. `docs/architecture.md` records the dependency boundaries.
   - Wayland/X11 clipboard providers and a change watcher.
   - Local file source and atomic `Downloads/bleconnect` sink.
 - Android production service slice: BLE peripheral, encrypted GATT, clipboard
-  writes, find-phone playback, and a local UI control server.
+  writes, find-phone playback, and a Unix-socket UI control server.
 - Kivy status/control screen for the Android service.
 - Linux/Android composition helpers and a small CLI.
 - Unit and integration tests with in-memory fakes.
@@ -55,8 +55,9 @@ Not implemented yet:
 - `src/bleconnect/adapters/linux/` — BlueZ pairing, BLE central, RFCOMM,
   clipboard, trusted devices.
 - `src/bleconnect/adapters/filesystem/` — local file source and sink.
-- `src/bleconnect/adapters/android/` — BLE peripheral, clipboard, sound, and
-  local control server bridges.
+- `src/bleconnect/ipc.py` — newline-delimited JSON IPC over Unix sockets.
+- `src/bleconnect/adapters/android/` — BLE peripheral, clipboard, and sound
+  bridges.
 - `src/bleconnect/platform/` — Linux and Android composition roots.
 - `android/app/` — production Android service and Kivy UI (in progress).
 - `android/spike/` — M0 foreground-service/BLE spike.

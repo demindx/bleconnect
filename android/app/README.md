@@ -13,7 +13,8 @@ server. Protocol framing and application behavior live in the shared
 - Phone-to-PC clipboard sending from the UI button.
 - Find-phone playback with volume restore.
 - Kivy status, pause/resume, send-clipboard, find-phone test, and log view.
-- Local control server on `127.0.0.1:8765` for the UI/service split.
+- Unix-socket control server in the app's private files directory for the
+  UI/service split (`daemon.sock`).
 
 File transfer (RFCOMM) is not wired in this slice yet; the service replies with
 `not_implemented` for `file_incoming`. The Linux RFCOMM receive path is ready.
@@ -57,7 +58,8 @@ The service log is at
 - The GATT characteristics use encrypted permissions. Linux must bond with the
   phone before reading or writing; the production design keeps the OS pairing
   agent as the trust boundary.
-- The control server is localhost-only and intended for the in-app UI.
+- The control socket is app-private and accessible only to the app's own
+  processes (UI, service, and future IME).
 - Clipboard reads from the service are best-effort because Android restricts
   background clipboard access; the UI sends the clipboard while focused.
 - The full 30-minute screen-off soak is still pending and tracked in #3.

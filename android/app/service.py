@@ -1,8 +1,8 @@
 """BLEConnect Android foreground service.
 
 The service owns the BLE peripheral, clipboard writes, find-phone playback, and
-the local control server used by the Kivy UI. Protocol framing and application
-behavior stay in the shared ``bleconnect`` package.
+the Unix-socket control server used by the Kivy UI. Protocol framing and
+application behavior stay in the shared ``bleconnect`` package.
 """
 
 from __future__ import annotations
@@ -19,11 +19,11 @@ from bleconnect.adapters.android.ble_peripheral import (
     create_pyjnius_transport,
 )
 from bleconnect.adapters.android.clipboard import AndroidClipboard
-from bleconnect.adapters.android.control import ControlServer
 from bleconnect.adapters.android.sound import AndroidSoundPlayer
 from bleconnect.application.clipboard_service import ClipboardService
 from bleconnect.application.ports import ClipboardSnapshot
 from bleconnect.application.session import PacketDispatcher
+from bleconnect.ipc import IpcError, JsonLineServer
 from bleconnect.messages import (
     CLIPBOARD,
     ERROR,
@@ -51,6 +51,10 @@ def _log_path() -> Path:
     if directory is None:
         directory = SERVICE.getFilesDir()
     return Path(directory.getAbsolutePath()) / "service.log"
+
+
+def _socket_path() -> Path:
+    return Path(SERVICE.getFilesDir().getAbsolutePath()) / "daemon.sock"
 
 
 def log(message: str) -> None:
@@ -158,50 +162,52 @@ async def _run() -> None:
     await link.connect()
     log(f"BLE peripheral started; mtu={link.mtu_size}")
 
-    async def handle_command(command: dict) -> dict:
+    async def handle_command(method: str, params: dict) -> dict:
         nonlocal find_task
-        name = command.get("command")
-        if name == "state":
+        if method == "state.get":
             return {
-                "ok": True,
-                "state": {
-                    "connected": link.connected,
-                    "paused": clipboard_service.paused,
-                    "mtu": link.mtu_size,
-                    "log": str(_log_path()),
-                },
+                "connected": link.connected,
+                "paused": clipboard_service.paused,
+                "mtu": link.mtu_size,
+                "log": str(_log_path()),
             }
-        if name == "send_clipboard":
-            text = command.get("text")
+        if method == "clipboard.send":
+            text = params.get("text")
             if not isinstance(text, str) or not text:
-                return {"ok": False, "error": "text is required"}
+                raise IpcError("invalid_params", "text is required")
             try:
                 sent = await clipboard_service.publish_snapshot(
                     ClipboardSnapshot(text)
                 )
             except Exception as exc:
                 log(f"clipboard send failed: {exc}")
-                return {"ok": False, "error": str(exc)}
-            return {"ok": True, "sent": sent}
-        if name == "pause":
+                raise IpcError("clipboard_failed", str(exc)) from exc
+            return {"sent": sent}
+        if method == "sync.pause":
             clipboard_service.pause()
-            return {"ok": True, "paused": True}
-        if name == "resume":
+            return {"paused": True}
+        if method == "sync.resume":
             clipboard_service.resume()
-            return {"ok": True, "paused": False}
-        if name == "ring":
+            return {"paused": False}
+        if method == "find_phone.start":
             try:
-                duration = float(command.get("duration_s", 10))
-                volume = float(command.get("volume", 1.0))
-            except (TypeError, ValueError):
-                return {"ok": False, "error": "invalid duration or volume"}
+                duration = float(params.get("duration_s", 10))
+                volume = float(params.get("volume", 1.0))
+            except (TypeError, ValueError) as exc:
+                raise IpcError("invalid_params", "invalid duration or volume") from exc
             start_find_phone(duration, volume)
-            return {"ok": True}
-        return {"ok": False, "error": f"unknown command: {name}"}
+            return {"started": True}
+        if method == "find_phone.stop":
+            if find_task is not None and not find_task.done():
+                find_task.cancel()
+            find_task = None
+            await sound.stop()
+            return {"stopped": True}
+        raise IpcError("unknown_method", f"unknown method: {method}")
 
-    control = ControlServer(handle_command)
+    control = JsonLineServer(_socket_path(), handle_command)
     await control.start()
-    log(f"control server on 127.0.0.1:{control.port}")
+    log(f"control server on {_socket_path()}")
 
     try:
         while True:

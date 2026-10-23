@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-import socket
 import threading
 import time
 from pathlib import Path
@@ -17,26 +15,20 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.textinput import TextInput
 
+from bleconnect.ipc import request_sync
+
 PythonActivity = autoclass("org.kivy.android.PythonActivity")
 ServiceBleconnect = autoclass("org.bleconnect.app.ServiceBleconnect")
 Context = autoclass("android.content.Context")
-
-CONTROL_PORT = 8765
 
 
 def _permission(name: str) -> str:
     return getattr(Permission, name, f"android.permission.{name}")
 
 
-def send_command(command: dict, timeout: float = 2.0) -> dict:
-    with socket.create_connection(("127.0.0.1", CONTROL_PORT), timeout=timeout) as sock:
-        sock.sendall(
-            (json.dumps(command, ensure_ascii=False) + "\n").encode("utf-8")
-        )
-        response = sock.makefile("rb").readline()
-    if not response:
-        raise RuntimeError("service closed the connection")
-    return json.loads(response.decode("utf-8"))
+def _socket_path() -> str:
+    activity = PythonActivity.mActivity
+    return str(Path(activity.getFilesDir().getAbsolutePath()) / "daemon.sock")
 
 
 def read_clipboard_text() -> str | None:
@@ -59,10 +51,10 @@ class StatusPoller(threading.Thread):
     def run(self) -> None:
         while True:
             try:
-                response = send_command({"command": "state"}, timeout=1.0)
+                state = request_sync(_socket_path(), "state.get", timeout=1.0)
             except Exception:
-                response = {"ok": False, "error": "service offline"}
-            self._on_state(response)
+                state = None
+            self._on_state(state)
             time.sleep(2.0)
 
 
@@ -147,45 +139,50 @@ class BleConnectRoot(BoxLayout):
             self.status.text = "Clipboard is empty or unreadable."
             return
         self._run_command(
-            {"command": "send_clipboard", "text": text},
-            "Clipboard sent.",
+            "clipboard.send", {"text": text}, "Clipboard sent."
         )
 
     def pause(self) -> None:
-        self._run_command({"command": "pause"}, "Clipboard sync paused.")
+        self._run_command("sync.pause", {}, "Clipboard sync paused.")
 
     def resume(self) -> None:
-        self._run_command({"command": "resume"}, "Clipboard sync resumed.")
+        self._run_command("sync.resume", {}, "Clipboard sync resumed.")
 
     def ring(self) -> None:
         self._run_command(
-            {"command": "ring", "duration_s": 10, "volume": 1.0},
+            "find_phone.start",
+            {"duration_s": 10, "volume": 1.0},
             "Find-phone started.",
         )
 
-    def _run_command(self, command: dict, success: str) -> None:
+    def _run_command(
+        self, method: str, params: dict, success: str
+    ) -> None:
         def worker() -> None:
             try:
-                response = send_command(command)
+                result = request_sync(_socket_path(), method, params)
+                error = None
             except Exception as exc:
-                response = {"ok": False, "error": str(exc)}
+                result = None
+                error = str(exc)
             Clock.schedule_once(
-                lambda _dt: self._show_response(response, success), 0
+                lambda _dt: self._show_result(result, error, success), 0
             )
 
         threading.Thread(target=worker, daemon=True).start()
 
-    def _show_response(self, response: dict, success: str) -> None:
-        if response.get("ok"):
-            self.status.text = success
+    def _show_result(
+        self, result: dict | None, error: str | None, success: str
+    ) -> None:
+        if error is not None:
+            self.status.text = f"Error: {error}"
         else:
-            self.status.text = f"Error: {response.get('error', 'unknown error')}"
+            self.status.text = success
 
-    def _apply_state(self, response: dict) -> None:
-        if not response.get("ok"):
+    def _apply_state(self, state: dict | None) -> None:
+        if state is None:
             self.status.text = "Service offline."
             return
-        state = response.get("state", {})
         connected = "connected" if state.get("connected") else "waiting for PC"
         paused = "paused" if state.get("paused") else "active"
         self.status.text = (

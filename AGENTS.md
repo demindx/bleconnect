@@ -22,8 +22,9 @@ stays independent of both GUIs and of platform APIs.
   facade shared by Qt and Kivy.
 - `src/bleconnect/adapters/linux/` - BlueZ pairing, BLE central, RFCOMM,
   clipboard, trusted devices.
-- `src/bleconnect/adapters/android/` - BLE peripheral bridge, clipboard, sound,
-  and the localhost UI/service control server.
+- `src/bleconnect/ipc.py` - newline-delimited JSON IPC over Unix sockets.
+- `src/bleconnect/adapters/android/` - BLE peripheral bridge, clipboard, and
+  sound; the UI/service control channel is the shared `ipc.py` layer.
 - `src/bleconnect/adapters/filesystem/` - local file source/sink for explicit
   transfers and a future rooted-file adapter for shared folders.
 - `src/bleconnect/adapters/ui/qt/` - thin PySide6 views (planned).

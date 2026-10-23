@@ -27,7 +27,11 @@ async def _ble_ping(args: argparse.Namespace) -> None:
     from .adapters.linux.ble_central import connect_ble_service
 
     link = await connect_ble_service(
-        address=args.address, timeout=args.timeout
+        address=args.address,
+        timeout=args.timeout,
+        pair=args.pair,
+        connect_timeout=args.connect_timeout,
+        attempts=args.attempts,
     )
     try:
         from .messages import PING, PONG, control_packet
@@ -130,6 +134,11 @@ def _build_parser() -> argparse.ArgumentParser:
     ping = subparsers.add_parser("ble-ping", help="send a BLE ping")
     ping.add_argument("--address", default=None)
     ping.add_argument("--timeout", type=float, default=10.0)
+    ping.add_argument("--connect-timeout", type=float, default=30.0)
+    ping.add_argument("--attempts", type=int, default=2)
+    ping.add_argument(
+        "--pair", action="store_true", help="pair while connecting"
+    )
 
     discover = subparsers.add_parser(
         "discover", help="discover Bluetooth devices via BlueZ"

@@ -50,8 +50,18 @@ class BleTransport(Protocol):
 class BleakTransport:
     """Bleak-backed GATT transport. Bleak is imported only when used."""
 
-    def __init__(self, device: object) -> None:
+    def __init__(
+        self,
+        device: object,
+        *,
+        pair: bool = False,
+        connect_timeout: float = 30.0,
+    ) -> None:
+        if connect_timeout <= 0:
+            raise ValueError("connect_timeout must be positive")
         self._device = device
+        self._pair = pair
+        self._connect_timeout = connect_timeout
         self._client = None
         self._disconnect_handler: Callable[[], None] | None = None
 
@@ -66,7 +76,10 @@ class BleakTransport:
                 "BLE support needs the optional dependency: uv sync --extra linux"
             ) from exc
         self._client = BleakClient(
-            self._device, disconnected_callback=self._on_disconnected
+            self._device,
+            disconnected_callback=self._on_disconnected,
+            pair=self._pair,
+            timeout=self._connect_timeout,
         )
         await self._client.connect()
 
@@ -214,11 +227,42 @@ async def connect_ble_service(
     *,
     address: str | None = None,
     timeout: float = 10.0,
+    pair: bool = False,
+    connect_timeout: float = 30.0,
+    attempts: int = 2,
 ) -> BleCentralLink:
-    """Connect to the BLE peripheral and subscribe to its characteristics."""
-    device = address if address is not None else await find_ble_service(
-        service_uuid, timeout
-    )
-    link = BleCentralLink(BleakTransport(device))
-    await link.connect()
-    return link
+    """Connect to the BLE peripheral, retrying a dropped or stale link."""
+    if attempts <= 0:
+        raise ValueError("attempts must be positive")
+    if timeout <= 0:
+        raise ValueError("timeout must be positive")
+
+    last_error: Exception | None = None
+    for attempt in range(attempts):
+        try:
+            device = address if address is not None else await find_ble_service(
+                service_uuid, timeout
+            )
+            link = BleCentralLink(
+                BleakTransport(
+                    device,
+                    pair=pair,
+                    connect_timeout=connect_timeout,
+                )
+            )
+            try:
+                await link.connect()
+            except Exception:
+                await link.close()
+                raise
+            return link
+        except Exception as exc:
+            last_error = exc
+            if attempt + 1 >= attempts:
+                break
+            if address is None:
+                await asyncio.sleep(1.0)
+
+    raise BleUnavailableError(
+        f"could not connect to the BLE service: {last_error}"
+    ) from last_error

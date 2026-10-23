@@ -30,16 +30,19 @@ specification. `docs/architecture.md` records the dependency boundaries.
   - RFCOMM profile server and packet link.
   - Wayland/X11 clipboard providers and a change watcher.
   - Local file source and atomic `Downloads/bleconnect` sink.
+- Android production service slice: BLE peripheral, encrypted GATT, clipboard
+  writes, find-phone playback, and a Unix-socket UI control server.
+- Kivy status/control screen for the Android service.
 - Linux/Android composition helpers and a small CLI.
 - Unit and integration tests with in-memory fakes.
 
 Not implemented yet:
 
-- Production Android foreground service and Kivy UI.
+- Android RFCOMM file transfer and PC-to-phone sending orchestration.
+- Full 30-minute Android screen-off soak.
 - Qt interface.
 - Clipboard IME for background Android-to-Linux sync.
 - Automatic reconnect/backoff and the full GUI orchestration.
-- PC-to-phone file sending orchestration (the RFCOMM receive path is ready).
 
 ## Repository layout
 
@@ -52,8 +55,13 @@ Not implemented yet:
 - `src/bleconnect/adapters/linux/` — BlueZ pairing, BLE central, RFCOMM,
   clipboard, trusted devices.
 - `src/bleconnect/adapters/filesystem/` — local file source and sink.
+- `src/bleconnect/ipc.py` — newline-delimited JSON IPC over Unix sockets.
+- `src/bleconnect/adapters/android/` — BLE peripheral, clipboard, and sound
+  bridges.
 - `src/bleconnect/platform/` — Linux and Android composition roots.
+- `android/app/` — production Android service and Kivy UI (in progress).
 - `android/spike/` — M0 foreground-service/BLE spike.
+- `android/p4a-recipes/` — local python-for-android build workaround.
 - `tests/` — unit and integration tests with in-memory fakes.
 - `docs/spec.md` — canonical specification.
 - `docs/architecture.md` — architectural boundaries and dependency direction.
@@ -102,5 +110,7 @@ uv run bleconnect rfcomm-server
 `rfcomm-server` accepts only trusted devices. The current M0 spike uses raw BLE
 writes, so `ble-ping` targets the production framed BLE service, not the spike.
 
-The next milestone is the production Android service and Kivy UI (issue #3),
-including the full 30-minute screen-off soak.
+The Android production app lives in `android/app/`; build and run instructions
+are in `android/app/README.md`. The remaining #3 work is Android RFCOMM file
+transfer, PC-to-phone sending orchestration, and the full 30-minute screen-off
+soak.

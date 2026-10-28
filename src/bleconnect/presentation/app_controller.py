@@ -101,7 +101,7 @@ class AppController:
 
     async def send_clipboard(self) -> bool:
         try:
-            return await self._clipboard.publish_current()
+            return await self._clipboard.publish_current(force=True)
         except Exception as exc:
             self._set_state(last_error=str(exc))
             raise

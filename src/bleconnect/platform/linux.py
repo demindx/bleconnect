@@ -59,10 +59,21 @@ def build_linux_file_sink_factory(
 
 
 async def connect_linux_ble(
-    *, address: str | None = None, timeout: float = 10.0
+    *,
+    address: str | None = None,
+    timeout: float = 10.0,
+    pair: bool = False,
+    connect_timeout: float = 30.0,
+    attempts: int = 2,
 ) -> BleCentralLink:
     """Scan for and connect to the Android BLE peripheral."""
-    return await connect_ble_service(address=address, timeout=timeout)
+    return await connect_ble_service(
+        address=address,
+        timeout=timeout,
+        pair=pair,
+        connect_timeout=connect_timeout,
+        attempts=attempts,
+    )
 
 
 def build_linux_app(

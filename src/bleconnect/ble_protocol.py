@@ -166,6 +166,11 @@ class MessageAssembler:
     def pending_count(self) -> int:
         return len(self._pending)
 
+    def reset(self) -> None:
+        """Drop partial and dedupe state when a new link starts."""
+        self._pending.clear()
+        self._completed.clear()
+
     def add(self, frame: BleFrame) -> Packet | None:
         """Add one frame and return a packet once all chunks are present."""
         now = self._clock()

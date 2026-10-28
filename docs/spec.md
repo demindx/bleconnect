@@ -207,6 +207,7 @@ src/bleconnect/
   protocol.py                 # shared framing and validation (v2)
   messages.py                 # shared message type names and payload helpers
   ble_protocol.py             # BLE chunk framing and reassembly
+  ipc.py                      # newline-delimited JSON over Unix sockets
   application/
     ports.py                  # PacketLink, ClipboardPort, PresencePort, ...
     clipboard_service.py
@@ -223,7 +224,11 @@ src/bleconnect/
       rfcomm.py                # RFCOMM link and BlueZ profile server
       clipboard.py
       trusted_devices.py
-    android/                   # thin native bridge wrappers (post-spike)
+    android/
+      ble_peripheral.py        # PacketLink over the native GATT bridge
+      ble_peripheral_pyjnius.py
+      clipboard.py
+      sound.py
     filesystem/
       rooted_files.py          # future feature
       file_source.py
@@ -765,12 +770,12 @@ Python so both platforms share behavior.
 
 Kivy UI to service:
 
-- The Activity binds to the foreground service through a small Binder interface
-  exposed via pyjnius.
+- The Activity talks to the foreground service over a newline-delimited JSON
+  Unix socket in the app's private files directory (`daemon.sock`).
 - Commands: start/stop synchronization, send clipboard, send a selected file,
   cancel a transfer, find phone, and update settings.
-- The service emits state and progress callbacks; Kivy marshals them to the UI
-  thread with `Clock.schedule_once`.
+- The service returns command results and can broadcast state/progress events;
+  Kivy marshals updates to the UI thread with `Clock.schedule_once`.
 
 Event-loop integration:
 

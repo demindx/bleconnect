@@ -1,6 +1,7 @@
 ---
 description: Implements BLEConnect Python core, Linux adapters, CLI, and hardware-free tests.
 mode: subagent
+model: opencode-go/mimo-v2.6-flash
 temperature: 0.2
 permission:
   edit:

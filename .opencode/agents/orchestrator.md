@@ -1,6 +1,7 @@
 ---
 description: Plans BLEConnect work, delegates to specialist agents, and verifies results without editing files.
 mode: primary
+model: opencode-go/minimax-m3.1-flash
 temperature: 0.1
 permission:
   edit: deny

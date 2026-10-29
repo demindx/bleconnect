@@ -1,6 +1,7 @@
 ---
 description: Writes and runs hardware-free pytest coverage; edits only tests.
 mode: subagent
+model: opencode-go/mimo-v2.6-flash
 temperature: 0.1
 permission:
   edit:

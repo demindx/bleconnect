@@ -1,6 +1,7 @@
 ---
 description: Builds, inspects, installs, and exercises BLEConnect Android APKs over ADB.
 mode: subagent
+model: opencode-go/mimo-v2.6-flash
 temperature: 0.1
 permission:
   edit: deny

@@ -1,6 +1,7 @@
 ---
 description: Updates BLEConnect specs, architecture notes, and README files without editing code.
 mode: subagent
+model: opencode-go/mimo-v2.6-flash
 temperature: 0.1
 permission:
   edit:

@@ -1,6 +1,7 @@
 ---
 description: Implements BLEConnect Android service, Kivy UI, Java bridge, MediaStore, and Android adapters.
 mode: subagent
+model: opencode-go/mimo-v2.6-flash
 temperature: 0.2
 permission:
   edit:

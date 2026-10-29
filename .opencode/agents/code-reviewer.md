@@ -1,6 +1,7 @@
 ---
 description: Read-only reviewer for BLEConnect architecture, protocol, tests, and pattern notes.
 mode: subagent
+model: opencode-go/mimo-v2.6-flash
 temperature: 0.1
 permission:
   edit: deny

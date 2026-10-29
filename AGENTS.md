@@ -152,6 +152,30 @@ Kivy view ─────────┘                                        
 - `README.md` documents user-facing commands and setup steps.
 - Keep examples runnable; do not document commands or extras that do not exist.
 
+## Agents
+
+Primary agent:
+
+- `orchestrator` - plans work, delegates to specialists, and verifies results;
+  does not edit files itself.
+
+Subagents live in `.opencode/agents/`:
+
+- `python-developer` - core Python, Linux adapters, CLI, and their tests.
+- `android-developer` - Android service, Kivy UI, Java bridge, MediaStore, and
+  Android-specific tests.
+- `code-reviewer` - read-only review of architecture, protocol, tests, and
+  pattern notes.
+- `test-engineer` - writes and runs hardware-free pytest coverage; edits only
+  `tests/`.
+- `android-tester` - builds APKs, inspects manifests, and runs ADB/device checks.
+- `docs-writer` - updates specs, architecture, and README files; does not edit
+  code.
+
+Subagents must not commit, push, merge, or edit outside their allowed scope
+unless the user explicitly asks. They report findings and the commands actually
+run. Restart opencode after adding or changing agent files.
+
 ## Testing Guidelines
 
 - Use pytest; name files `test_<behavior>.py` under `tests/`.
